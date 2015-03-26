@@ -113,9 +113,9 @@ const (
 // Put inserts an object into the S3 bucket.
 //
 // See http://goo.gl/FEBPD for details.
-func (b *Bucket) Put(path string, data []byte, contType string, perm ACL) error {
+func (b *Bucket) Put(path string, data []byte, contType string, contMD5 string, perm ACL) error {
 	body := bytes.NewReader(data)
-	return b.PutReader(path, body, int64(len(data)), contType, perm)
+	return b.PutReader(path, body, int64(len(data)), contType, contMD5, perm)
 }
 
 // PutBucket creates a new bucket.
@@ -207,15 +207,15 @@ func (b *Bucket) GetReader(path string) (rc io.ReadCloser, err error) {
 // PutReader inserts an object into the S3 bucket by consuming data
 // from r until EOF. Passing in an io.ReadSeeker for r will optimize
 // the memory usage.
-func (b *Bucket) PutReader(path string, r io.Reader, length int64, contType string, perm ACL) error {
-	return b.PutReaderWithHeader(path, r, length, contType, perm, http.Header{})
+func (b *Bucket) PutReader(path string, r io.Reader, length int64, contType string, contMD5 string, perm ACL) error {
+	return b.PutReaderWithHeader(path, r, length, contType, contMD5, perm, http.Header{})
 }
 
 // PutReaderWithHeader inserts an object into the S3 bucket by
 // consuming data from r until EOF. It also adds the headers provided
 // to the request. Passing in an io.ReadSeeker for r will optimize the
 // memory usage.
-func (b *Bucket) PutReaderWithHeader(path string, r io.Reader, length int64, contType string, perm ACL, hdrs http.Header) error {
+func (b *Bucket) PutReaderWithHeader(path string, r io.Reader, length int64, contType string, contMD5 string, perm ACL, hdrs http.Header) error {
 
 	// Convert the reader to a ReadSeeker so we can seek after
 	// signing.
@@ -239,6 +239,7 @@ func (b *Bucket) PutReaderWithHeader(path string, r io.Reader, length int64, con
 
 	req.Header.Add("Content-Type", contType)
 	req.Header.Add("x-amz-acl", string(perm))
+	req.Header.Add("Content-MD5", string(contMD5))
 	addAmazonDateHeader(req.Header)
 
 	// Determine the current offset.
